@@ -1,9 +1,17 @@
 const express = require('express');
+const path = require('path');
 const exphbs = require('express-handlebars');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const flash = require('connect-flash');
+const session = require('express-session');
+const methodOverride = require('method-override');
 
 const app = express();
+
+// Load Routes
+const ideas = require('./routes/ideas');
+const users = require('./routes/users');
 
 const db = require('./config/database');
 
@@ -13,11 +21,6 @@ mongoose.Promise = global.Promise;
 mongoose.connect(db.mongoURI)
    .then(() => console.log('MongoDB Connected...'))
    .catch(err => console.log(err));
-
-// Load Idea Model
-require('./models/Idea.js');
-const Idea = mongoose.model('ideas');
-
 
 // Handlebars Middleware
 app.engine('handlebars', exphbs({
@@ -29,6 +32,30 @@ app.set('view engine', 'handlebars');
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
+// Static Folder
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Method Override Middleware
+app.use(methodOverride('_method'));
+
+// Express Session Middleware
+app.use(session({
+   secret: 'secret',
+   resave: true,
+   saveUninitialized: true
+}));
+
+app.use(flash());
+
+// Global Variables
+app.use((req, res, next) => {
+   res.locals.success_msg = req.flash('success_msg');
+   res.locals.error_msg = req.flash('error_msg');
+   res.locals.error = req.flash('error');
+   next();
+
+});
+
 // Index Route
 app.get('/', (req, res) => {
    res.render('index');
@@ -39,44 +66,10 @@ app.get('/about', (req, res) => {
    res.render('about');
 });
 
-// Add Idea Route
-app.get('/ideas/add', (req, res) => {
-   res.render('ideas/add');
-});
+app.use('/ideas', ideas);
+app.use('/users', users);
 
-// Add an idea by processing the form
-app.post('/ideas', (req, res) => {
-   let errors = [];
-
-   if (!req.body.title) {
-      errors.push({text: 'Please add a title'});
-   }
-   if (!req.body.details) {
-      errors.push({text: 'Please add some details'});
-   }
-
-   if (errors.length > 0) {
-      res.render('ideas/add', {
-         errors: errors,
-         title: req.body.title,
-         details: req.body.details
-      })
-   } else {
-      const newIdea = {
-         title: req.body.title,
-         details: req.body.details
-      }
-      new Idea (newIdea)
-         .save()
-         .then(idea => {
-            res.redirect('./ideas');
-         })
-   }
-
-   });
-
-
-const port = 3000;
+const port = 5000;
 
 app.listen(port, () => {
    console.log(`Server started on port ${port}`);
