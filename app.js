@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const flash = require('connect-flash');
 const session = require('express-session');
 const methodOverride = require('method-override');
+const passport = require('passport');
 
 const app = express();
 
@@ -46,6 +47,11 @@ app.use(session({
 }));
 
 app.use(flash());
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
 
 // Global Variables
 app.use((req, res, next) => {
